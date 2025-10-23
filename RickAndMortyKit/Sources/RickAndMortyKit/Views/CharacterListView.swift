@@ -10,34 +10,70 @@ import SwiftUI
 public struct CharacterListView: View {
     @StateObject private var viewModel: CharacterListViewModel
     
-    public init(service: APIServiceProtocol = MockAPIService()) {
-        _viewModel = StateObject(wrappedValue: CharacterListViewModel(service: service))
-    }
+    let statuses = ["", "alive", "dead", "unknown"]
+    let speciesList = ["", "Human", "Alien", "Robot", "Mythological", "Animal"]
+    
+    // Este init permite inyectar un ViewModel (usado en preview o App)
+   public init(viewModel: CharacterListViewModel) {
+            _viewModel = StateObject(wrappedValue: viewModel)
+        }
+
     
     public var body: some View {
         NavigationView {
-            List(viewModel.characters) { character in
-                HStack {
-                    AsyncImage(url: URL(string: character.image)) { image in
-                        image.resizable().scaledToFill()
-                    } placeholder: {
-                        ProgressView()
+                    VStack {
+                        // 🔍 Búsqueda y filtros
+                        VStack(spacing: 8) {
+                            TextField("Buscar por nombre", text: $viewModel.searchText)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .onSubmit {
+                                    viewModel.applyFilters()
+                                }
+
+                            HStack {
+                                Picker("Estado", selection: $viewModel.selectedStatus) {
+                                    ForEach(statuses, id: \.self) {
+                                        Text($0.capitalized)
+                                    }
+                                }
+
+                                Picker("Especie", selection: $viewModel.selectedSpecies) {
+                                    ForEach(speciesList, id: \.self) {
+                                        Text($0)
+                                    }
+                                }
+                            }
+                            .pickerStyle(MenuPickerStyle())
+                        }
+                        .padding(.horizontal)
+
+                        List {
+                            ForEach(viewModel.characters) { character in
+                                NavigationLink(destination: CharacterDetailView(character: character)) {
+                                    CharacterRow(character: character)
+                                        .onAppear {
+                                            if character == viewModel.characters.last {
+                                                viewModel.fetchCharacters()
+                                            }
+                                        }
+                                }
+                            }
+
+                            if viewModel.isLoading {
+                                HStack {
+                                    Spacer()
+                                    ProgressView()
+                                    Spacer()
+                                }
+                            }
+                        }
+                        .listStyle(.plain)
+                        .refreshable {
+                            viewModel.refresh()
+                        }
                     }
-                    .frame(width: 50, height: 50)
-                    .clipShape(Circle())
-                    
-                    VStack(alignment: .leading) {
-                        Text(character.name)
-                            .font(.headline)
-                        Text(character.species)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
+                    .navigationTitle("Personajes")
                 }
-            }
-            .navigationTitle("Rick & Morty")
-            .onAppear { viewModel.loadCharacters() }
-        }
     }
 }
 

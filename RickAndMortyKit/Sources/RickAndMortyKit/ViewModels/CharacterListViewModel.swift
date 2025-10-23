@@ -10,28 +10,65 @@ import Combine
 
 public final class CharacterListViewModel: ObservableObject {
     
-    @Published public private(set) var characters: [CharacterModel] = []
-    @Published public private(set) var isLoading = false
-    
-    private var cancellables = Set<AnyCancellable>()
-    private let service: APIServiceProtocol
+    @Published var characters: [Character] = []
+    @Published var isLoading: Bool = false
+    @Published var error: String?
+    @Published var hasMore: Bool = true
 
-    public init(service: APIServiceProtocol) {
-        self.service = service
+  // Filtros
+    @Published var searchText: String = ""
+    @Published var selectedStatus: String = ""
+    @Published var selectedSpecies: String = ""
+
+    private var currentPage = 1
+
+    private let apiService: APIServiceProtocol
+
+   public init(apiService: APIServiceProtocol) {
+        self.apiService = apiService
+        fetchCharacters(reset: true)
     }
 
-    public func loadCharacters() {
+func fetchCharacters(reset: Bool = false) {
+        guard !isLoading else { return }
+        
+        if reset {
+            characters = []
+            currentPage = 1
+            hasMore = true
+        }
+        guard hasMore else { return }
         isLoading = true
-        service.fetchCharacters()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] completion in
-                self?.isLoading = false
-                if case .failure(let error) = completion {
-                    print("Error: \(error)")
+
+    apiService.fetchCharacters(
+                page: currentPage,
+                name: searchText,
+                status: selectedStatus,
+                species: selectedSpecies
+            ) { [weak self] result in
+                DispatchQueue.main.async {
+                    self?.isLoading = false
+
+                    switch result {
+                    case .success(let charactersPage):
+                        if charactersPage.results.isEmpty {
+                            self?.hasMore = false
+                        } else {
+                            self?.characters += charactersPage.results
+                            self?.currentPage += 1
+                        }
+                    case .failure(let error):
+                        self?.error = error.localizedDescription
+                    }
                 }
-            } receiveValue: { [weak self] characters in
-                self?.characters = characters
             }
-            .store(in: &cancellables)
     }
+
+func applyFilters() {
+        fetchCharacters(reset: true)
+    }
+
+func refresh() {
+    applyFilters()
+}
 }

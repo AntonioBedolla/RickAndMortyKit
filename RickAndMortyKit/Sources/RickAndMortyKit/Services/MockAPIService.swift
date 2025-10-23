@@ -9,19 +9,38 @@ import Foundation
 import Combine
 
 public final class MockAPIService: APIServiceProtocol {
-    
     public init() {}
-    
-    public func fetchCharacters() -> AnyPublisher<[CharacterModel], Error> {
-        let mockData = [
-            CharacterModel(id: 1, name: "Rick Sanchez", species: "Human", status: "Alive", image: "https://rickandmortyapi.com/api/character/avatar/1.jpeg"),
-            CharacterModel(id: 2, name: "Morty Smith", species: "Human", status: "Alive", image: "https://rickandmortyapi.com/api/character/avatar/2.jpeg")
-        ]
-        
-        return Just(mockData)
-            .setFailureType(to: Error.self)
-            .eraseToAnyPublisher()
+    public func fetchCharacters(
+            page: Int,
+            name: String?,
+            status: String?,
+            species: String?,
+            completion: @escaping (Result<CharacterAPIResponse, Error>) -> Void
+        ) {
+            let mockCharacter = Character(
+                id: 1,
+                name: "Rick Sanchez",
+                status: "Alive",
+                species: "Human",
+                type: "",
+                gender: "Male",
+                origin: .init(name: "Earth"),
+                location: .init(name: "Citadel of Ricks"),
+                image: "https://rickandmortyapi.com/api/character/avatar/1.jpeg",
+                episode: ["https://rickandmortyapi.com/api/episode/1"]
+            )
+            
+            let response = CharacterAPIResponse(
+                        info: Info(next: nil),
+                        results: [mockCharacter]
+                    )
+
+                    completion(.success(response))
+        }
+
+    public func fetchEpisodes(urls: [String], completion: @escaping (Result<[Episode], Error>) -> Void) {
+            let mockEpisode = Episode(id: 1, name: "Pilot", episode: "S01E01")
+            completion(.success([mockEpisode]))
+        }
     }
-    
-}
 
